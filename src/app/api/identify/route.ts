@@ -13,7 +13,7 @@ export async function POST(req:NextRequest){
   while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>MAX_TRACE_IMAGE_BYTES){await reader.cancel();return NextResponse.json({error:'Ukuran gambar maksimal 8 MB.'},{status:413})}chunks.push(value)}
   const bytes=Buffer.concat(chunks);const mime=imageMime(bytes);
   if(!mime)return NextResponse.json({error:'File bukan gambar JPG, PNG, atau WebP yang valid.'},{status:415});
-  const response=await fetch('https://api.trace.moe/search?anilistInfo&cutBorders=1',{method:'POST',headers:{'Content-Type':mime},body:bytes,cache:'no-store',redirect:'error',signal:AbortSignal.any([req.signal,AbortSignal.timeout(45000)])});
+  const response=await fetch('https://api.trace.moe/search?anilistInfo&cutBorders=1',{method:'POST',headers:{'Content-Type':mime},body:bytes,cache:'no-store',redirect:'manual',signal:AbortSignal.any([req.signal,AbortSignal.timeout(45000)])});
   if(response.status===402||response.status===429)return NextResponse.json({error:'Kuota atau batas pencarian trace.moe tercapai. Coba lagi nanti.'},{status:429});
   if(!response.ok)return NextResponse.json({error:response.status===400?'Gambar tidak dapat dikenali. Coba screenshot adegan anime yang lebih jelas.':'trace.moe sedang tidak tersedia. Coba lagi nanti.'},{status:response.status===400?400:502});
   const data=await response.json();if(data.error)throw Error('upstream');

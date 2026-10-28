@@ -86,3 +86,24 @@ Pengujian live menggunakan gambar contoh resmi dokumentasi menghasilkan 10 hasil
 Menu navbar: Beranda, Anime, Terbaru, Genre, Cari Anime dari Gambar. `/genre` adalah halaman khusus, terpisah dari filter katalog Anime. Genre diambil dari endpoint `/genres`; setiap genre mempunyai tombol navigasi sendiri serta baris rekomendasi hingga enam judul dari urutan katalog genre. Bagian rekomendasi dimuat ketika mendekati viewport, dengan maksimal tiga request aktif.
 
 Tombol Lihat Semua dan tombol genre membuka `/genre/[slug]`, menggunakan endpoint `/genres/:slug?page=...`, dengan pagination kelompok lima halaman dan input lompat halaman. State page tersimpan pada URL. Hasil bukan rekomendasi personal. Kegagalan satu baris dapat dicoba ulang tanpa mematikan baris lain. Pengujian live Action/Comedy/Fantasy berhasil, masing-masing mengembalikan 15 judul pada halaman pertama; jumlah genre saat pemeriksaan 36.
+
+## Deploy ke Cloudflare Pages (pages.dev)
+
+Paket Pages menggunakan advanced mode `_worker.js` untuk SSR dan API pada domain yang sama; tidak perlu memisahkan backend. `scripts/build-pages.mjs` membangun vinext lalu mengemas bundle menjadi satu Worker ESM agar import SSR relatif tetap terjaga. Aset disalin ke `pages-dist`, dan `_routes.json` mengecualikan gambar/static chunks dari Functions. `wrangler.jsonc` adalah konfigurasi Pages; `cloudflare.config.ts` tetap konfigurasi build vinext. Samakan kedua binding API jika mengganti sumber.
+
+```sh
+npm run build:pages
+npm run preview:pages
+```
+
+Preview lokal berada di http://localhost:8788. Build dan pengujian Pages lokal berhasil untuk halaman, gambar, favicon, daftar genre, ongoing, dan katalog A-Z. Ini belum merupakan deployment publik.
+
+Deploy manual:
+
+```sh
+npx wrangler login
+npx wrangler pages project create nimelix --production-branch main
+npm run deploy:pages
+```
+
+Gunakan `npm.cmd`/`npx.cmd` pada PowerShell bila diperlukan. Alamat tepat nimelix.pages.dev hanya tersedia jika nama tersebut belum digunakan; ikuti alamat aktual yang dikembalikan Cloudflare. Untuk deployment berikutnya, ulangi build:pages lalu deploy:pages. Direct Upload tidak otomatis deploy dari GitHub. Jangan upload folder .local, .env.local, atau seluruh direktori proyek.

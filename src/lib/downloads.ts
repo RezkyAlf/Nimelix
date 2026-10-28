@@ -9,7 +9,7 @@ export async function verifyDownload(raw:string,request:Requester=fetch):Promise
   // Pixeldrain's public file-info API distinguishes an existing video from a landing page.
   const fileId:string|null=url.hostname==='pixeldrain.com'?/^\/u\/([a-zA-Z0-9]+)\/?$/.exec(url.pathname)?.[1]||null:null;
   if(fileId){
-   const result=await request(`https://pixeldrain.com/api/file/${fileId}/info`,{signal:AbortSignal.timeout(8000),redirect:'error',cache:'no-store'});
+   const result=await request(`https://pixeldrain.com/api/file/${fileId}/info`,{signal:AbortSignal.timeout(8000),redirect:'manual',cache:'no-store'});
    if(!result.ok)return null;
    const info=await result.json();
    if(info.success===false||typeof info.name!=='string'||!videoName.test(info.name)||!(Number(info.size)>0))return null;
@@ -36,7 +36,7 @@ export async function verifyMegaDownload(raw:string,request:Requester=fetch):Pro
    const legacy=/^#!([a-zA-Z0-9_-]+)!([a-zA-Z0-9_-]+)$/.exec(url.hash);
    const id=modern?.[1]||legacy?.[1],key=modern?url.hash.slice(1):legacy?.[2];
    if(!id||!key||!/^[a-zA-Z0-9_-]{43}$/.test(key))return null;
-   const response=await request('https://g.api.mega.co.nz/cs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify([{a:'g',g:1,p:id}]),redirect:'error',signal:AbortSignal.timeout(10000),cache:'no-store'});
+   const response=await request('https://g.api.mega.co.nz/cs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify([{a:'g',g:1,p:id}]),redirect:'manual',signal:AbortSignal.timeout(10000),cache:'no-store'});
    if(!response.ok)return null;
    const results=await response.json();const file=Array.isArray(results)?results[0]:null;
    if(!file||typeof file!=='object'||!(file.s>0)||typeof file.at!=='string'||typeof file.g!=='string'||!file.g.startsWith('https://'))return null;

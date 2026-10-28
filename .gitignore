@@ -4,3 +4,8 @@ node_modules/
 *.tsbuildinfo
 
 .local/
+/dist/
+.vinext/
+.cloudflare/
+pages-dist/
+.wrangler/
