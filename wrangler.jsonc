@@ -5,7 +5,6 @@
   "compatibility_date": "2026-10-28",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
-    "ANIME_API_BASE_URL": "https://api.otakudesu.natee.my.id/api/v1/anime",
-    "ALLOWED_STREAM_HOSTS": "www.blogger.com,odvidhide.com,mega.nz,pixeldrain.com"
+    "ALLOWED_STREAM_HOSTS": "vsys-srv.berkasdrive.com,vsys-meledak.dlgan.my.id,www.blogger.com,filedon.co,odvidhide.com,video.sumantritelnologi.workers.dev"
   }
 }

@@ -13,7 +13,7 @@ const output=path.resolve(root,'pages-dist');
 if(path.dirname(output)!==root||path.basename(output)!=='pages-dist')throw Error('Output harus berada di folder pages-dist proyek.');
 if(!existsSync(path.join(source,'bundle/index.js')))throw Error('Build vinext belum tersedia.');
 const worker=JSON.parse(readFileSync(path.join(source,'worker.config.json'),'utf8'));
-const vars={};for(const name of ['ANIME_API_BASE_URL','ALLOWED_STREAM_HOSTS']){
+const vars={};for(const name of ['ALLOWED_STREAM_HOSTS']){
  const binding=worker.env?.[name];if(binding?.type!=='text'||typeof binding.value!=='string')throw Error(`Binding ${name} belum dikonfigurasi`);vars[name]=binding.value;
 }
 // Replace only this project's generated Pages output, never source or credentials.

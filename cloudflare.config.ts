@@ -13,8 +13,7 @@ export default defineConfig({
     },
     env: {
       ASSETS: bindings.assets(),
-      ANIME_API_BASE_URL: bindings.text("https://api.otakudesu.natee.my.id/api/v1/anime"),
-      ALLOWED_STREAM_HOSTS: bindings.text("www.blogger.com,odvidhide.com,mega.nz,pixeldrain.com"),
+      ALLOWED_STREAM_HOSTS: bindings.text("vsys-srv.berkasdrive.com,vsys-meledak.dlgan.my.id,www.blogger.com,filedon.co,odvidhide.com,video.sumantritelnologi.workers.dev"),
     },
   }),
 });

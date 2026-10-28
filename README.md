@@ -1,111 +1,75 @@
 # Nimelix
 
-Website anime berbahasa Indonesia dengan Next.js App Router dan TypeScript. Katalog, pencarian, detail, episode, carousel, pagination bernomor, serta Daftar Saya di localStorage.
+Website anime berbahasa Indonesia dengan Next.js/TypeScript dan tampilan gelap merah. Katalog, pencarian, filter, genre, batch, episode, carousel, serta Daftar Saya di localStorage.
 
 ## Menjalankan
 
 ```sh
 npm install
+npm run api:setup
 npm run dev
 ```
 
-Buka http://localhost:3000. Pada PowerShell yang membatasi skrip, gunakan `npm.cmd`. Produksi: `npm run build`, kemudian `npm start`.
+Pada PowerShell gunakan `npm.cmd` bila skrip npm dibatasi. Build Next.js: `npm run build`, kemudian `npm start`.
 
-## API aktif
+## Sumber data
 
-Menggunakan **rizkyhaksono/otakudesu-be**, menggantikan wajik-anime-api. Source: https://github.com/rizkyhaksono/otakudesu-be.
+Scraper Cheerio membaca HTML publik **https://www.animebatch.id/** beserta JSON yang disertakan pada halaman. Tidak menggunakan API anime pihak ketiga atau endpoint API internal situs sumber. Implementasi ada di `src/lib/animebatch-parser.ts` dan `src/lib/animebatch.ts`.
 
-`.env.local` sudah dikonfigurasi:
+API internal Nimelix menggunakan prefix `/api/anime/animebatch/`: `catalog`, `search?q=...`, `ongoing`, `completed`, `batch`, `genre`, `genre/:slug`, `anime/:slug`, dan `episode/:id`. Pagination dan filter genre/status/format/tahun/sortir diteruskan ke halaman sumber. Satu halaman katalog tidak mengambil detail setiap judul satu per satu.
+
+Scraper membatasi tiga pengambilan bersamaan, timeout 15 detik, dan HTML maksimal 6 MB. Cache proses dibatasi 96 entri; TTL katalog dua menit, detail lima menit, genre satu jam. Request identik digabung; kegagalan tidak disimpan. Cache tidak dibagi antar-instance. Batas katalog tetap 1.000 request/menit/IP per instance.
+
+Daftar Saya tetap di localStorage browser. Favorit dari sumber lama membuka pencarian judul agar tidak menggunakan slug lama di sumber baru.
+
+## Pemutar dan unduhan
+
+Episode, OVA, movie, dan special berasal dari kelompok link pada halaman detail. Pilihan awal mengikuti AnimeBatch: kualitas **720p**, kemudian preferensi **BerkasDrive**, dengan urutan asli untuk nilai yang sama. Kualitas lain dan server hanya berasal dari link streaming sumber. Mengganti kualitas memilih link pertama pada kualitas tersebut. Tidak ada prioritas Mega atau perpindahan otomatis buatan Nimelix.
+
+Pemutar dimulai dari poster dan tombol putar. Muat ulang kembali ke poster dengan pilihan server tetap. Video langsung memakai Vidstack; embed memakai iframe penyedia. Kontrol di dalam iframe mengikuti penyedia. Unduhan menampilkan tab per episode dan batch, format/kualitas, serta semua penyedia yang dicantumkan sumber. Link mode external hanya dipakai untuk unduhan.
+
+URL pemutar dibatasi HTTPS dan allowlist berikut di `.env.local`, `cloudflare.config.ts`, serta `wrangler.jsonc`:
 
 ```dotenv
-ANIME_API_BASE_URL=https://api.otakudesu.natee.my.id/api/v1/anime
-ALLOWED_STREAM_HOSTS=www.blogger.com,odvidhide.com,mega.nz,pixeldrain.com
+ALLOWED_STREAM_HOSTS=vsys-srv.berkasdrive.com,vsys-meledak.dlgan.my.id,www.blogger.com,filedon.co,odvidhide.com,video.sumantritelnologi.workers.dev
 ```
 
-`ANIME_API_BASE_URL` harus menunjuk ke prefix `/api/v1/anime`, termasuk bila memakai deployment sendiri. `npm run api:setup` mengatur deployment publik tersebut pada Windows, tanpa menjalankan server API lama. `npm run api:check` memeriksa koneksi. Website tidak lagi membutuhkan API lokal port 3001. Folder `.local` hanya menyimpan arsip/source audit lama, bukan runtime aktif.
+Wrapper player internal AnimeBatch membatasi iframe ke domain sendiri. Nimelix memakai URL embed penyedia yang memang tercantum dalam data publik sumber, tanpa memproksi atau menghapus pembatasan. Kebijakan frame diperiksa dan error ditampilkan jika penyedia menolak. Respons API sukses tidak menjamin file penyedia masih dapat diputar. Domain penyedia baru perlu ditinjau sebelum ditambahkan ke allowlist.
 
-Restart website setelah mengubah environment. Deployment publik dapat membatasi permintaan atau mengalami gangguan; UI menampilkan pesan dan tombol coba lagi. Tanpa base URL, katalog pratinjau 32 judul tetap tersedia.
+## Fitur lain
 
-## Adapter
+Navbar menyediakan Beranda, Anime, Batch, Genre, dan Cari Anime dari Gambar. Halaman genre memiliki tombol per genre, rekomendasi yang dimuat saat mendekati viewport, dan Lihat Semua. Pagination memakai kelompok lima halaman dan input nomor halaman. Hero berganti tiap lima detik, berhenti ketika kontrol mendapat fokus, tombol jeda aktif, tab tersembunyi, atau reduced motion aktif.
 
-`src/lib/otakudesu-api.ts` memetakan respons API baru ke model UI. Prefix BFF `/api/anime/otakudesu` dipertahankan agar tautan detail dan watchlist yang sudah tersimpan tetap berlaku.
-
-| Fitur | Endpoint upstream |
-| --- | --- |
-| Katalog A–Z | `/list` |
-| Sedang tayang | `/ongoing/:page` |
-| Selesai | `/complete/:page` |
-| Pencarian | `/search/:keyword` |
-| Detail | `/detail/:slug` |
-| Episode | `/episode/:slug` |
-| Resolusi server | `/mirror?content=...` |
-
-Halaman Anime menggunakan seluruh direktori A–Z, bukan ongoing. Pagination lokal 24 judul per halaman; poster/metadata diambil dari detail dengan maksimal tiga request bersamaan dan cache. Jika detail salah satu judul gagal, judul dari direktori tetap tersedia dengan fallback poster. Filter genre berlaku pada halaman yang sudah dimuat; pencarian menggunakan endpoint pencarian sumber. Terbaru mengikuti urutan ongoing, tanpa tanggal rekaan.
-
-## Pemutar
-
-Frontend mengirim ID episode dan indeks server ke `/api/playback`; URL video diambil kembali di server dari API tepercaya. Pilihan Otomatis memakai server utama jika didukung, kemudian mencoba maksimal empat penyedia mirror berbeda bila domain utama tidak didukung. Server yang terpilih ditampilkan di UI. URL HTTPS hanya ditampilkan jika hostname persis cocok dengan `ALLOWED_STREAM_HOSTS`. Blogger dibatasi ke `/video.g` dengan token; Mega ke `/embed/`. Domain Vidhide yang telah diperiksa adalah `odvidhide.com`. Desustream melarang embed pada origin Nimelix dan tidak ditambahkan ke daftar domain. Mirror yang melaporkan `embeddable: false` tidak dimuat; pembatasan embed penyedia tetap dihormati. Pilihan server tersedia sesuai metadata episode, namun domain yang belum diizinkan tetap ditolak. Pastikan izin penggunaan konten sebelum mengaktifkan domain tambahan atau meluncurkan layanan publik.
-
-Resolusi video dipilih dari metadata aktual API. Pilihan server Otomatis memprioritaskan file MP4 Pdrain yang lolos verifikasi pada kualitas terpilih; bila file langsung tidak tersedia, pilihan embed tetap dicoba. Request byte-range file uji menghasilkan HTTP 206 dengan MIME video/mp4. Pemutaran interaktif browser tetap belum diverifikasi.
-
-Pemutar sumber video langsung kini memakai `@vidstack/react` (Vidstack) dengan DefaultVideoLayout, seekStep 5 detik, gesture kiri/kanan seek 5 detik, serta pilihan resolusi API pada slot kontrol. Vidstack memiliki kontrol di dalam video: putar/jeda, maju/mundur 5 detik, timeline, suara, resolusi, kecepatan 0.5x sampai 2x, dan layar penuh. Ketuk dua kali pada sisi kiri/kanan video native untuk mundur/maju 5 detik; gerakan geser diabaikan. Ketukan tunggal memakai jeda pendek agar double-tap tidak ikut mengubah play/pause. Kecepatan dipertahankan saat mengganti resolusi. Tidak ada loop, reset, kecerahan, kontras, atau saturasi. Posisi native dipertahankan saat mengganti resolusi bila memungkinkan. Server dan tombol Download berada di bawah video. Kontrol internal iframe pihak ketiga tidak bisa dihapus atau diubah oleh Nimelix; resolusi Nimelix ditampilkan sebagai overlay untuk mode embed.
-
-Panel unduhan menampilkan semua server yang disediakan API untuk format/resolusi terpilih, termasuk Mega dan penyedia lain bila tersedia. Link HTTPS dideduplikasi dan dibuka di situs penyedia; ketersediaan file mengikuti sumber.
-
-HLS, progress tontonan persisten, dan subtitle eksternal belum diimplementasikan.
+Pencarian gambar `/cari-gambar` menggunakan trace.moe melalui `/api/identify`. Mendukung JPG/PNG/WebP maksimal 8 MB; gambar tidak disimpan ke disk. Hasil mencakup kecocokan, judul, cuplikan, episode, dan pencarian katalog. Dokumentasi: https://soruly.github.io/trace.moe-api/ .
 
 ## Validasi
 
 ```sh
 npm run typecheck
-npm run build
+node --test tests/*.test.mjs
 npm run api:check
-node --test tests/playback.test.mjs tests/downloads.test.mjs
+npm run build
+npm run build:pages
 ```
 
-Migrasi diverifikasi melalui endpoint live untuk katalog, ongoing, completed, pencarian, detail, dan episode pada 28 Oktober 2026. Jumlah judul dan halaman mengikuti sumber dan dapat berubah. Pemutaran interaktif browser belum diverifikasi.
+Setelah build vinext, jika tipe route Next.js perlu dibuat ulang, jalankan `npx next typegen` sebelum typecheck.
 
-Poster pratinjau berasal dari MyAnimeList; hero menggunakan poster dari katalog API. Daftar sumber poster tersimpan di `public/images/posters/SOURCES.md` dan `src/lib/preview-extra.json`. Hak cipta tetap milik pemegang hak masing-masing.
+## Cloudflare Pages
 
-Mode Otomatis juga menangani error pemuatan video native di browser. Kandidat yang gagal dikirim sebagai daftar pengecualian; API tidak mengulang kandidat tersebut. Pemutar mencoba maksimal delapan kandidat per konfigurasi episode/server/resolusi dan melewati URL yang sama. Timeout 18 detik berlaku saat metadata native belum dimuat. Metadata yang berhasil dimuat menghentikan timeout agar video yang belum ditekan Play tidak dianggap gagal. Mega diprioritaskan di antara mirror setelah Blogger. Pergantian resolusi/server atau Coba Lagi memulai percobaan baru. Error video internal iframe tidak dapat dibaca lintas origin; tombol coba server berikutnya disediakan untuk kondisi tersebut.
-
-Vidstack hanya dipakai untuk media langsung yang didukung library. Embed Mega/Blogger/Vidhide tetap diputar dalam iframe penyedia karena bukan URL MP4/HLS langsung; mode fallback dan pengecualian server gagal tetap aktif. Paket Vidstack 1.15.7 dipasang sesuai permintaan; upstream menandainya deprecated dan menyarankan Video.js 10 untuk migrasi mendatang.
-
-Hero beranda memakai hingga lima anime pertama dari katalog. Poster, judul, dan tautan berganti setiap lima detik; tersedia tombol sebelumnya/berikutnya, indikator slide, dan jeda. Rotasi berhenti saat hover/fokus, tab tersembunyi, atau preferensi reduced motion aktif. Poster berikutnya dipramuat, dan gambar gagal menggunakan fallback lokal.
-
-## Cari anime dari gambar
-
-Halaman `/cari-gambar` tersedia di navbar sebagai Cari Anime dari Gambar. Unggah, drag-and-drop, atau tempel screenshot JPG/PNG/WebP maksimal 8 MB, lalu tekan Cari Anime. Gambar diteruskan sebagai POST binary ke `https://api.trace.moe/search?anilistInfo&cutBorders=1` dan tidak ditulis ke disk oleh Nimelix. Validasi signature file, pembatasan ukuran stream, satu request aktif, timeout, dan error kuota ditangani di BFF `/api/identify`. Tidak membutuhkan API key.
-
-Hasil memuat judul, kemiripan, episode bila tersedia, timestamp, preview gambar/cuplikannya, tautan AniList, dan pencarian judul di katalog Nimelix. Skor di bawah 90% diberi catatan kemungkinan tidak cocok; hasil bukan jaminan identifikasi. Dokumentasi: https://soruly.github.io/trace.moe-api/ ; source: https://github.com/soruly/trace.moe . Perhatikan ketentuan trace.moe jika akan dipakai secara komersial.
-
-Pengujian live menggunakan gambar contoh resmi dokumentasi menghasilkan 10 hasil dan kecocokan teratas 99,2%. Jalankan `node --test tests/trace-moe.test.mjs` untuk validasi normalisasi dan jenis gambar. Interaksi upload/drag/paste di browser belum diuji langsung.
-
-## Halaman Genre
-
-Menu navbar: Beranda, Anime, Terbaru, Genre, Cari Anime dari Gambar. `/genre` adalah halaman khusus, terpisah dari filter katalog Anime. Genre diambil dari endpoint `/genres`; setiap genre mempunyai tombol navigasi sendiri serta baris rekomendasi hingga enam judul dari urutan katalog genre. Bagian rekomendasi dimuat ketika mendekati viewport, dengan maksimal tiga request aktif.
-
-Tombol Lihat Semua dan tombol genre membuka `/genre/[slug]`, menggunakan endpoint `/genres/:slug?page=...`, dengan pagination kelompok lima halaman dan input lompat halaman. State page tersimpan pada URL. Hasil bukan rekomendasi personal. Kegagalan satu baris dapat dicoba ulang tanpa mematikan baris lain. Pengujian live Action/Comedy/Fantasy berhasil, masing-masing mengembalikan 15 judul pada halaman pertama; jumlah genre saat pemeriksaan 36.
-
-## Deploy ke Cloudflare Pages (pages.dev)
-
-Optimasi pemuatan: pemutar video, pencarian gambar, dan penjelajah genre dimuat sebagai chunk terpisah saat digunakan. Beranda memuat ongoing dan completed secara paralel; daftar pribadi tidak memanggil katalog API. Respons katalog yang sukses dapat disimpan browser selama 60 detik dan CDN selama 120 detik (dengan stale-while-revalidate 300 detik, sesuai dukungan hosting). Data upstream memakai cache proses dengan maksimal 128 entri, TTL mengikuti jenis data, dan permintaan bersamaan ke URL yang sama digabung. Cache ini tidak dibagi antar-instance dan hilang saat proses dihentikan; permintaan pertama tetap bergantung pada kecepatan sumber API. Respons gagal tidak disimpan dalam cache ini.
-
-Paket Pages menggunakan advanced mode `_worker.js` untuk SSR dan API pada domain yang sama; tidak perlu memisahkan backend. `scripts/build-pages.mjs` membangun vinext lalu mengemas bundle menjadi satu Worker ESM agar import SSR relatif tetap terjaga. Aset disalin ke `pages-dist`, dan `_routes.json` mengecualikan gambar/static chunks dari Functions. `wrangler.jsonc` adalah konfigurasi Pages; `cloudflare.config.ts` tetap konfigurasi build vinext. Samakan kedua binding API jika mengganti sumber.
+Paket advanced mode menggabungkan SSR dan API dalam Worker; aset statis dikecualikan dari Functions. Pemutar, penjelajah genre, dan pencarian gambar dimuat dalam chunk terpisah. Build dan preview:
 
 ```sh
 npm run build:pages
 npm run preview:pages
 ```
 
-Preview lokal berada di http://localhost:8788. Build dan pengujian Pages lokal berhasil untuk halaman, gambar, favicon, daftar genre, ongoing, dan katalog A-Z. Ini belum merupakan deployment publik.
-
-Deploy manual:
+Preview berada di http://localhost:8788. Deploy manual setelah memeriksa preview:
 
 ```sh
 npx wrangler login
-npx wrangler pages project create nimelix --production-branch main
 npm run deploy:pages
 ```
 
-Gunakan `npm.cmd`/`npx.cmd` pada PowerShell bila diperlukan. Alamat tepat nimelix.pages.dev hanya tersedia jika nama tersebut belum digunakan; ikuti alamat aktual yang dikembalikan Cloudflare. Untuk deployment berikutnya, ulangi build:pages lalu deploy:pages. Direct Upload tidak otomatis deploy dari GitHub. Jangan upload folder .local, .env.local, atau seluruh direktori proyek.
+Konfigurasi proyek Pages bernama nimelix tersedia di `wrangler.jsonc`. Direct Upload tidak otomatis deploy dari GitHub. Jangan mengunggah `.env.local`, `.local`, atau seluruh folder proyek. Perubahan lokal belum dipublikasikan sampai perintah deploy dijalankan.
+
+Validasi migrasi pada 29 Oktober 2026: typecheck, 27 tes, build Next.js, dan build Pages berhasil. Scraper live membaca 4.288 judul (24 per halaman), pencarian Kimetsu, genre Action halaman 2, serta 2.849 judul batch. Preview Cloudflare diuji di Chrome; Kimetsu episode 1 melalui BerkasDrive 720p berhasil memutar video dengan timeline maju. Pilihan kualitas, muat ulang, unduhan episode/batch, serta layout genre mobile diperiksa tanpa error JavaScript. Hasil satu episode tidak menjamin seluruh file penyedia tersedia. Belum diuji pada perangkat Android fisik dan belum deploy.

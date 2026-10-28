@@ -21,6 +21,7 @@
   "dependencies": {
     "@vidstack/react": "^1.15.7",
     "@vinext/cloudflare": "^1.2.1",
+    "cheerio": "^1.2.0",
     "fscreen": "^1.2.0",
     "lucide-react": "^0.468.0",
     "next": "^16.0.0",

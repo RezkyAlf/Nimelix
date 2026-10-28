@@ -1,13 +1,12 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {adapt} from '../../../lib/otakudesu-api';
-type Group={format:string;resolution:string;links:{provider:string;url:string}[]};
+import {getEpisode,getDetail} from '../../../lib/animebatch';
+import {downloadGroups,validSlug} from '../../../lib/animebatch-parser';
 export async function GET(req:NextRequest){
- const id=req.nextUrl.searchParams.get('episode')||'',index=req.nextUrl.searchParams.get('group')||'0';
- if(!/^[a-zA-Z0-9_-]{1,200}$/.test(id)||!/^\d{1,2}$/.test(index))return NextResponse.json({error:'Episode atau format unduhan tidak valid'},{status:400});
+ const episode=req.nextUrl.searchParams.get('episode')||'',anime=req.nextUrl.searchParams.get('anime')||'',group=req.nextUrl.searchParams.get('group')||'0';
+ if(!/^\d{1,4}$/.test(group)||(!episode&&!validSlug(anime)))return NextResponse.json({error:'Parameter unduhan tidak valid'},{status:400});
  try{
-  const result=await adapt('episode',id,1,'');const groups=(result.data as {details:{downloads:Group[]}}).details.downloads;
-  const group=groups[Number(index)];if(!group)return NextResponse.json({error:'Format unduhan tidak ditemukan'},{status:404});
-  const links=Array.from(new Map(group.links.flatMap(link=>{try{const url=new URL(link.url);return url.protocol==='https:'&&!url.username&&!url.password?[[url.href,{provider:link.provider,url:url.href}] as const]:[]}catch{return []}})).values());
-  return NextResponse.json({links});
- }catch{return NextResponse.json({error:'Tautan unduhan belum dapat dimuat. Coba lagi nanti.'},{status:502});}
+  const groups=episode?(await getEpisode(episode)).downloads:downloadGroups((await getDetail(anime)).links);const selected=groups[Number(group)];
+  if(!selected)return NextResponse.json({error:'Pilihan unduhan tidak ditemukan'},{status:404});
+  return NextResponse.json({links:selected.links},{headers:{'Cache-Control':'public, max-age=60'}});
+ }catch{return NextResponse.json({error:'Unduhan AnimeBatch belum dapat dimuat.'},{status:502})}
 }

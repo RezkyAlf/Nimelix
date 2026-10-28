@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
+import {fetchApiJson} from '../lib/api-client';
 import {ArrowRight,ChevronLeft,Layers,RotateCcw} from 'lucide-react';
 import Pagination from './Pagination';
 type Genre={name:string;slug:string};
@@ -8,9 +9,9 @@ type Card={animeId:string;title:string;poster:string;genreList:{title:string}[]}
 let running=0;const waiting:(()=>void)[]=[];
 async function genreRequest(slug:string,page:number,signal:AbortSignal){
  await new Promise<void>(resolve=>{const begin=()=>{running++;resolve()};if(running<3)begin();else waiting.push(begin)});
- try{if(signal.aborted)throw new DOMException('Aborted','AbortError');const response=await fetch(`/api/anime/otakudesu/genre/${encodeURIComponent(slug)}?page=${page}`,{signal});const json=await response.json();if(!response.ok)throw Error(json.error||'Genre belum dapat dimuat');return json as {data:{animeList:Card[]};pagination:{totalPages:number}}}finally{running--;waiting.shift()?.()}
+ try{if(signal.aborted)throw new DOMException('Aborted','AbortError');const {response,data:json}=await fetchApiJson(`/api/anime/animebatch/genre/${encodeURIComponent(slug)}?page=${page}`,{signal});if(!response.ok)throw Error(json.error||'Genre belum dapat dimuat');return json as {data:{animeList:Card[]};pagination:{totalPages:number}}}finally{running--;waiting.shift()?.()}
 }
-function Poster({anime}:{anime:Card}){return <article className="card"><Link href={`/anime/otakudesu/${encodeURIComponent(anime.animeId)}`} className="poster"><img src={anime.poster||'/poster.svg'} alt={anime.title} loading="lazy" decoding="async" onError={e=>{if(!e.currentTarget.src.endsWith('/poster.svg'))e.currentTarget.src='/poster.svg'}}/></Link><Link className="card-title" href={`/anime/otakudesu/${encodeURIComponent(anime.animeId)}`}>{anime.title}</Link><p className="card-meta">{anime.genreList.slice(0,2).map(g=>g.title).join(' · ')}</p></article>}
+function Poster({anime}:{anime:Card}){return <article className="card"><Link href={`/anime/animebatch/${encodeURIComponent(anime.animeId)}`} className="poster"><img src={anime.poster||'/poster.svg'} alt={anime.title} loading="lazy" decoding="async" onError={e=>{if(!e.currentTarget.src.endsWith('/poster.svg'))e.currentTarget.src='/poster.svg'}}/></Link><Link className="card-title" href={`/anime/animebatch/${encodeURIComponent(anime.animeId)}`}>{anime.title}</Link><p className="card-meta">{anime.genreList.slice(0,2).map(g=>g.title).join(' · ')}</p></article>}
 function GenreShelf({genre}:{genre:Genre}){
  const element=useRef<HTMLElement>(null);const [visible,setVisible]=useState(false),[items,setItems]=useState<Card[]>([]),[busy,setBusy]=useState(true),[error,setError]=useState(''),[retry,setRetry]=useState(0);
  useEffect(()=>{const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){setVisible(true);observer.disconnect()}},{rootMargin:'250px'});if(element.current)observer.observe(element.current);return()=>observer.disconnect()},[]);
@@ -21,7 +22,7 @@ export default function GenreExplorer({slug}:{slug?:string}){
  const [genres,setGenres]=useState<Genre[]>([]),[genreError,setGenreError]=useState(''),[genreLoading,setGenreLoading]=useState(true);
  const [items,setItems]=useState<Card[]>([]),[busy,setBusy]=useState(Boolean(slug)),[error,setError]=useState(''),[page,setPage]=useState(1),[total,setTotal]=useState(1),[retry,setRetry]=useState(0),[initialized,setInitialized]=useState(false);
  useEffect(()=>{const value=Number(new URLSearchParams(window.location.search).get('page'));setPage(Number.isInteger(value)&&value>=1&&value<=9999?value:1);setInitialized(true);const back=()=>{const p=Number(new URLSearchParams(window.location.search).get('page'));setPage(Number.isInteger(p)&&p>=1&&p<=9999?p:1)};window.addEventListener('popstate',back);return()=>window.removeEventListener('popstate',back)},[]);
- useEffect(()=>{const controller=new AbortController();setGenreLoading(true);setGenreError('');fetch('/api/anime/otakudesu/genre',{signal:controller.signal}).then(async response=>{const json=await response.json();if(!response.ok)throw Error(json.error);if(!controller.signal.aborted)setGenres(json.data.genres)}).catch(e=>{if(!controller.signal.aborted)setGenreError(e.message)}).finally(()=>{if(!controller.signal.aborted)setGenreLoading(false)});return()=>controller.abort()},[retry]);
+ useEffect(()=>{const controller=new AbortController();setGenreLoading(true);setGenreError('');fetchApiJson('/api/anime/animebatch/genre',{signal:controller.signal}).then(({response,data:json})=>{if(!response.ok)throw Error(json.error);if(!controller.signal.aborted)setGenres(json.data.genres)}).catch(e=>{if(!controller.signal.aborted)setGenreError(e.message)}).finally(()=>{if(!controller.signal.aborted)setGenreLoading(false)});return()=>controller.abort()},[retry]);
  useEffect(()=>{if(!slug||!initialized)return;const controller=new AbortController();setBusy(true);setError('');genreRequest(slug,page,controller.signal).then(json=>{if(!controller.signal.aborted){setItems(json.data.animeList);setTotal(json.pagination.totalPages)}}).catch(e=>{if(!controller.signal.aborted)setError(e.message)}).finally(()=>{if(!controller.signal.aborted)setBusy(false)});return()=>controller.abort()},[slug,page,retry,initialized]);
  function go(next:number){setPage(next);window.history.pushState(null,'',`/genre/${encodeURIComponent(slug!)}${next>1?`?page=${next}`:''}`);document.getElementById('genre-anime-list')?.scrollIntoView({behavior:'smooth',block:'start'})}
  const name=genres.find(g=>g.slug===slug)?.name||slug;

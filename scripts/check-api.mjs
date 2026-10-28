@@ -1,4 +1,2 @@
-try{process.loadEnvFile('.env.local')}catch{}
-const base=process.env.ANIME_API_BASE_URL;
-if(!base){console.error('ANIME_API_BASE_URL belum diatur');process.exit(1)}
-try{const response=await fetch(`${base.replace(/\/$/,'')}/ongoing/1`,{signal:AbortSignal.timeout(15000)});const json=await response.json();if(!response.ok||!Array.isArray(json.data?.ongoingAnimeData))throw Error(`Respons API tidak sesuai (${response.status})`);console.log(`otakudesu-be terhubung: ${json.data.ongoingAnimeData.length} anime pada halaman pertama.`)}catch(error){console.error(error.message);process.exitCode=1}
+import {parseCatalog} from '../src/lib/animebatch-parser.ts';
+try{const response=await fetch('https://www.animebatch.id/',{signal:AbortSignal.timeout(15000),redirect:'manual'});if(!response.ok)throw Error('AnimeBatch merespons '+response.status);const data=parseCatalog(await response.text());console.log('AnimeBatch terhubung: '+data.total+' anime, '+data.items.length+' pada halaman pertama.')}catch(error){console.error(error.message);process.exitCode=1}
