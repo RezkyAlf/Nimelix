@@ -1,0 +1,27 @@
+{
+  "name": "nimelix",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/run-local.mjs",
+    "build": "next build",
+    "start": "node scripts/run-local.mjs --production",
+    "typecheck": "tsc --noEmit",
+    "dev:web": "next dev",
+    "api:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-api.ps1",
+    "api:check": "node scripts/check-api.mjs"
+  },
+  "dependencies": {
+    "@vidstack/react": "^1.15.7",
+    "lucide-react": "^0.468.0",
+    "next": "^16.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.9.0"
+  }
+}

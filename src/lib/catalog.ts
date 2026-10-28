@@ -1,0 +1,5 @@
+import extra from './preview-extra.json';
+export type Anime={id:string;source:string;title:string;poster:string;genres:string[];status?:string;episodes?:string;synopsis?:string;episodeList?:{title:string;episodeId:string}[]};
+const original:Anime[]=[['frieren','Frieren: Beyond Journey’s End','1015/136556','Fantasy,Adventure'],['solo-leveling','Solo Leveling','1448/148216','Action,Fantasy'],['jujutsu-kaisen','Jujutsu Kaisen','1792/138022','Action,Supernatural'],['demon-slayer','Demon Slayer: Kimetsu no Yaiba','1908/126464','Action,Fantasy'],['one-piece','One Piece','1244/135212','Adventure,Action'],['spy-family','Spy × Family','1441/127641','Comedy,Action'],['chainsaw-man','Chainsaw Man','1806/126216','Action,Supernatural'],['attack-on-titan','Attack on Titan','1000/115793','Action,Drama']].map(([id,title,img,genres])=>({id,source:'preview',title,poster:`/images/posters/${id}.jpg`,genres:genres.split(',')}));
+
+export const preview:Anime[]=[...original,...extra.map(({id,source,title,poster,genres})=>({id,source,title,poster,genres}))];
