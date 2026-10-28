@@ -1,3 +1,5 @@
+import {createRequestCache} from './request-cache';
+const cachedRequest = createRequestCache();
 type Row = Record<string, unknown>;
 function object(value: unknown): Row {return value && typeof value === 'object' && !Array.isArray(value) ? value as Row : {};}
 function array(value: unknown): Row[] {return Array.isArray(value) ? value.map(object) : [];}
@@ -9,11 +11,13 @@ export async function upstream(path: string, revalidate = 300): Promise<unknown>
  if(!base)throw Error('API belum dikonfigurasi');
  const url=new URL(`${base.replace(/\/$/,'')}/${path}`);
  if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw Error('Konfigurasi API tidak valid');
+ return cachedRequest(`${url.href}:${revalidate}`,revalidate*1000,async()=>{
  const response=await fetch(url,{signal:AbortSignal.timeout(12000),redirect:'manual',next:{revalidate}});
  if(!response.ok)throw Error(response.status===429?'Sumber membatasi permintaan. Coba sebentar lagi.':`Sumber API merespons ${response.status}`);
  const json=object(await response.json());
  if(!('data' in json)||json.error)throw Error('Respons API tidak dikenali');
  return json.data;
+ });
 }
 export function card(value: unknown) {
  const v=object(value);

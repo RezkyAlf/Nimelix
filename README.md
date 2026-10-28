@@ -89,6 +89,8 @@ Tombol Lihat Semua dan tombol genre membuka `/genre/[slug]`, menggunakan endpoin
 
 ## Deploy ke Cloudflare Pages (pages.dev)
 
+Optimasi pemuatan: pemutar video, pencarian gambar, dan penjelajah genre dimuat sebagai chunk terpisah saat digunakan. Beranda memuat ongoing dan completed secara paralel; daftar pribadi tidak memanggil katalog API. Respons katalog yang sukses dapat disimpan browser selama 60 detik dan CDN selama 120 detik (dengan stale-while-revalidate 300 detik, sesuai dukungan hosting). Data upstream memakai cache proses dengan maksimal 128 entri, TTL mengikuti jenis data, dan permintaan bersamaan ke URL yang sama digabung. Cache ini tidak dibagi antar-instance dan hilang saat proses dihentikan; permintaan pertama tetap bergantung pada kecepatan sumber API. Respons gagal tidak disimpan dalam cache ini.
+
 Paket Pages menggunakan advanced mode `_worker.js` untuk SSR dan API pada domain yang sama; tidak perlu memisahkan backend. `scripts/build-pages.mjs` membangun vinext lalu mengemas bundle menjadi satu Worker ESM agar import SSR relatif tetap terjaga. Aset disalin ke `pages-dist`, dan `_routes.json` mengecualikan gambar/static chunks dari Functions. `wrangler.jsonc` adalah konfigurasi Pages; `cloudflare.config.ts` tetap konfigurasi build vinext. Samakan kedua binding API jika mengganti sumber.
 
 ```sh

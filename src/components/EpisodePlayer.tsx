@@ -1,4 +1,6 @@
 'use client';
+import '@vidstack/react/player/styles/default/theme.css';
+import '@vidstack/react/player/styles/default/layouts/video.css';
 import {useEffect,useRef,useState} from 'react';
 import {Download,Film} from 'lucide-react';
 import {MediaPlayer,MediaProvider,Gesture,type MediaPlayerInstance} from '@vidstack/react';

@@ -1,6 +1,4 @@
 import type { Metadata } from 'next';
-import '@vidstack/react/player/styles/default/theme.css';
-import '@vidstack/react/player/styles/default/layouts/video.css';
 import './globals.css';
 export const metadata: Metadata = {
  metadataBase:new URL('https://nimelix.pages.dev'),
