@@ -17,7 +17,7 @@ test('persistent HTML and malformed JSON show a friendly message without raw par
 });
 test('JSON API errors keep their status and error message for existing UI handling',async()=>{
  let calls=0;const result=await fetchApiJson('/api/catalog',{},async()=>{calls++;return Response.json({error:'Situs sumber sedang tidak tersedia.'},{status:502})});
- assert.equal(result.response.status,502);assert.equal(result.data.error,'Situs sumber sedang tidak tersedia.');assert.equal(calls,1);
+ assert.equal(result.response.status,502);assert.equal(result.data.error,'Situs sumber sedang tidak tersedia.');assert.equal(calls,2);
 });
 test('forbidden responses and POST requests are not automatically repeated',async()=>{
  for(const [init,status] of [[{},403],[{method:'POST'},503]]){
@@ -27,4 +27,9 @@ test('forbidden responses and POST requests are not automatically repeated',asyn
 test('aborted requests are never retried',async()=>{
  const controller=new AbortController();let calls=0;
  await assert.rejects(fetchApiJson('/api/catalog',{signal:controller.signal},async()=>{calls++;controller.abort();throw new DOMException('Aborted','AbortError')}),{name:'AbortError'});assert.equal(calls,1);
+});
+
+test('temporary JSON server errors retry, while rate limiting is not retried',async()=>{
+ let calls=0;const result=await fetchApiJson('/api/catalog',{},async()=>++calls===1?Response.json({error:'temporary'},{status:503}):Response.json({data:{animeList:[1]}}));assert.equal(calls,2);assert.deepEqual(result.data.data.animeList,[1]);
+ calls=0;const limited=await fetchApiJson('/api/catalog',{},async()=>{calls++;return Response.json({error:'limit'},{status:429})});assert.equal(calls,1);assert.equal(limited.response.status,429);
 });

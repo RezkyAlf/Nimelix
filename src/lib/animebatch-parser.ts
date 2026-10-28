@@ -16,10 +16,12 @@ export function validSlug(value:unknown):value is string{
 
 // Read the public JSON embedded in Next's Flight stream; never evaluate source JavaScript.
 export function flightRecords(html:string){
- const $=load(html);let stream='';
- $('script').each((_,el)=>{const match=/^self\.__next_f\.push\((\[[\s\S]*\])\);?$/.exec($(el).text().trim());if(!match)return;
+ let stream='';
+ // Only JSON inside complete script tags is read; no source JavaScript is evaluated.
+ // Avoid building a DOM for every catalog/detail request on the Worker CPU budget.
+ for(const script of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)){const match=/^self\.__next_f\.push\((\[[\s\S]*\])\);?$/.exec(script[1].trim());if(!match)continue;
   try{const frame=JSON.parse(match[1]);if(frame[0]===1&&typeof frame[1]==='string')stream+=frame[1]}catch{}
- });
+ }
  const bytes=new TextEncoder().encode(stream),decoder=new TextDecoder(),records=new Map<string,unknown>();let offset=0;
  while(offset<bytes.length){
   let colon=offset;while(colon<bytes.length&&bytes[colon]!==58&&bytes[colon]!==10)colon++;
@@ -50,7 +52,11 @@ export function publicProps(html:string){
   if(depth>35||!value||typeof value!=='object')return;
   if(!Array.isArray(value)){
    const object=value as Record<string,unknown>;
-   if(object.initialData||object.post||object.facets)found.push(resolve(object) as Record<string,unknown>);
+   if(object.initialData||object.post||object.facets){
+    const selected:Record<string,unknown>={};
+    for(const key of ['initialData','facets','post','links'])if(key in object)selected[key]=resolve(object[key]);
+    found.push(selected);return;
+   }
   }
   for(const item of Object.values(value))visit(item,depth+1);
  }

@@ -1,6 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {getEpisode} from '../../../lib/animebatch';
-import {allowedVideo,defaultServerIndex} from '../../../lib/playback';
+import {allowedVideo,defaultServerIndex,streamHosts} from '../../../lib/playback';
 import {inspectFrame} from '../../../lib/embed-policy';
 import {createRequestCache} from '../../../lib/request-cache';
 const checked=createRequestCache(96);
@@ -10,7 +10,7 @@ export async function GET(req:NextRequest){
  try{
   const detail=await getEpisode(episode);const index=Number(server)<0?defaultServerIndex(detail.mirrors):Number(server);const selected=detail.mirrors[index];
   if(!selected)return NextResponse.json({error:'Streaming belum tersedia untuk pilihan ini. Periksa unduhan atau pilih server lain.',sourceUrl:detail.sourceUrl},{status:422});
-  const hosts=(process.env.ALLOWED_STREAM_HOSTS||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const hosts=streamHosts(process.env.ALLOWED_STREAM_HOSTS);
   const url=allowedVideo(selected.url,hosts);if(!url)return NextResponse.json({error:'Domain server ini belum didukung. Pilih server lain atau buka sumber.',sourceUrl:detail.sourceUrl},{status:422});
   if(selected.mode==='embed'){
    const policy=await checked(url+':'+req.nextUrl.origin,30000,()=>inspectFrame(url,req.nextUrl.origin));

@@ -1,4 +1,6 @@
 export type PlaybackMirror={id:string;url:string;mode:'video'|'embed';provider:string;quality:string};
+export const SOURCE_STREAM_HOSTS=['vsys-srv.berkasdrive.com','vsys-meledak.dlgan.my.id','www.blogger.com','filedon.co','odvidhide.com','video.sumantritelnologi.workers.dev'];
+export function streamHosts(configured=''){return [...new Set([...SOURCE_STREAM_HOSTS,...configured.split(',').map(s=>s.trim()).filter(Boolean)])]}
 export function allowedVideo(raw:string,hosts:string[]){
  try{const url=new URL(raw);if(url.protocol!=='https:'||url.username||url.password||(url.port&&url.port!=='443')||!hosts.includes(url.hostname))return null;return url.href}catch{return null}
 }

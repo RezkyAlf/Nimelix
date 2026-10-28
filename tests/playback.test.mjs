@@ -1,6 +1,6 @@
 ﻿import test from 'node:test';
 import assert from 'node:assert/strict';
-import {allowedVideo,defaultServerIndex} from '../src/lib/playback.ts';
+import {allowedVideo,defaultServerIndex,streamHosts} from '../src/lib/playback.ts';
 const mirror=(provider,quality)=>({id:'id',url:'https://filedon.co/embed/1',mode:'embed',provider,quality});
 test('default matches source: 720p before provider preference and stable source order',()=>{
  assert.equal(defaultServerIndex([mirror('BerkasDrive','480p'),mirror('Other','720p'),mirror('BerkasDrive','720p'),mirror('BerkasDrive','720p')]),2);
@@ -12,4 +12,8 @@ test('video URL requires an exact allowed HTTPS host without credentials or cust
  const hosts=['filedon.co'];
  for(const url of ['http://filedon.co/x','https://filedon.co.evil.test/x','https://u:p@filedon.co/x','https://filedon.co:8443/x'])assert.equal(allowedVideo(url,hosts),null);
  assert.equal(allowedVideo('https://filedon.co/embed/x',hosts),'https://filedon.co/embed/x');
+});
+
+test('source providers remain available when hosting has an empty or stale environment',()=>{
+ for(const config of ['', 'mega.nz,www.blogger.com']){const hosts=streamHosts(config);assert.equal(allowedVideo('https://vsys-srv.berkasdrive.com/hal/streaming/test',hosts),'https://vsys-srv.berkasdrive.com/hal/streaming/test');assert.equal(allowedVideo('https://evil.test/player',hosts),null);}
 });

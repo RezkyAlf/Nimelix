@@ -11,7 +11,9 @@ export async function fetchApiJson(url:string,init:RequestInit={},request:typeof
  for(let attempt=0;attempt<2;attempt++){
   init.signal?.throwIfAborted();
   let response:Response;
-  try{response=await request(url,attempt?{...init,cache:'no-store'}:init)}
+  const timeout=AbortSignal.timeout(20000);
+  const signal=init.signal?AbortSignal.any([init.signal,timeout]):timeout;
+  try{response=await request(url,{...init,signal,...(attempt?{cache:'no-store' as RequestCache}:{})})}
   catch(error){
    if(init.signal?.aborted||(error instanceof Error&&error.name==='AbortError'))throw error;
    if(isGet&&attempt===0)continue;
@@ -21,7 +23,10 @@ export async function fetchApiJson(url:string,init:RequestInit={},request:typeof
   if(/(?:application\/json|\+json)(?:\s*;|$)/i.test(type)){
    try{
     const data=await response.json();
-    if(data&&typeof data==='object'&&!Array.isArray(data))return {response,data};
+    if(data&&typeof data==='object'&&!Array.isArray(data)){
+     if(isGet&&attempt===0&&[500,502,503,504].includes(response.status))continue;
+     return {response,data};
+    }
    }catch(error){if(init.signal?.aborted||(error instanceof Error&&error.name==='AbortError'))throw error}
   }else await response.body?.cancel().catch(()=>{});
   if(!isGet||attempt>0||(!response.ok&&response.status<500))throw Error(responseMessage(response.status));
